@@ -61,6 +61,8 @@ public class SleepAsAndroidProviderService extends Service {
     final static String CHECK_CONNECTED = "com.urbandroid.sleep.watch.CHECK_CONNECTED";
     final static String REPORT = "com.urbandroid.sleep.watch.REPORT";
 
+    final static String CONFIRM_CONNECTED="com.urbandroid.sleep.watch.CONFIRM_CONNECTED";
+
     //  Just for testing
     public static final String EXTRA_MESSAGE = "message";
     public static final String LOG_BROADCAST = SleepAsAndroidProviderService.class.getName() + "LogBroadcast";
@@ -149,6 +151,7 @@ public class SleepAsAndroidProviderService extends Service {
     private IQDevice getDevice(ConnectIQ connectIQ) {
         try {
             List<IQDevice> devices = connectIQ.getKnownDevices();
+            Logger.logDebug(devices.get(0).toString());
             if (devices != null && devices.size() > 0) {
                 return devices.get(0);
             }
@@ -422,6 +425,7 @@ public class SleepAsAndroidProviderService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         RUNNING = true;
+        Logger.logDebug("SleepAsAndroidProvider onStartCommand: "+ intent.getAction());
 
         String action = intent != null ? intent.getAction() : "";
         if (action == null) {
@@ -483,6 +487,10 @@ public class SleepAsAndroidProviderService extends Service {
                     connectIQ.openApplication(getDevice(), getApp(), new IQOpenApplicationListener() {
                         @Override
                         public void onOpenApplicationResponse(IQDevice iqDevice, IQApp iqApp, IQOpenApplicationStatus iqOpenApplicationStatus) {
+                            if(iqOpenApplicationStatus.toString().equals("APP_IS_ALREADY_RUNNING")){
+                                Intent snoozeIntent = new Intent(CONFIRM_CONNECTED);
+                                sendBroadcast(snoozeIntent);
+                            }
                         }
                     });
                 }
@@ -490,6 +498,7 @@ public class SleepAsAndroidProviderService extends Service {
                 Logger.logSevere(e);
             }
         }
+        Logger.logDebug("start sticky");
         return START_STICKY;
     }
 

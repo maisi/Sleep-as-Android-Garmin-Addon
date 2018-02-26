@@ -69,7 +69,7 @@ using Toybox.Math as Math;
 
         if (messageQueue.indexOf(message) == -1) {
             messageQueue.add(message);
-            // log("Adding to q:" + message + " outQ: " + messageQueue);
+            //log("Adding to q:" + message + " outQ: " + messageQueue);
         }
     }
 
@@ -259,8 +259,10 @@ class SleepApp extends App.AppBase {
         enqueue("STARTING");
     }
     function sendCurrentDataAndResetBatch() {
+    	//log("SendCurrentDataAndResetBatch called");
         var toSend = ["DATA", batch.toString()];
         var toSend_new = ["DATA_NEW", batch_new.toString()];
+        //log("transmitting: " + batch.toString());
         if (batch.size() > 0) {
             enqueue(toSend);
             enqueue(toSend_new);
@@ -269,7 +271,6 @@ class SleepApp extends App.AppBase {
             batch = [];
             batch_new = [];
         }
-        // log("transmitting: " + batch.toString());
     }
     function sendHRData(hrAvg) {
         var HRtoSend = ["HR", hrAvg];
@@ -340,7 +341,6 @@ class SleepApp extends App.AppBase {
                 max_sum = 0;
                 aggCount = 0;
             }
-
             if ( batch.size() >= batchSize ) {
                 sendCurrentDataAndResetBatch();
             }
@@ -451,19 +451,24 @@ class SleepApp extends App.AppBase {
     }
 
     function sendNextMessage() {
+    	//log("SendNextMessage");
+    	//log("Size:"+ messageQueue.size() + deliveryInProgress + Sys.getDeviceSettings().phoneConnected);
         if (deliveryErrorCount > MAX_DELIVERY_ERROR) {
+        	//log("Too many errors");
             deliveryPauseCount++;
             if (deliveryPauseCount > MAX_DELIVERY_PAUSE) {
                 deliveryPauseCount = 0;
                 deliveryErrorCount = 0;
             }
-        } else if (messageQueue.size() > 0 && !deliveryInProgress && Sys.getDeviceSettings().phoneConnected) {
+        //} else if (messageQueue.size() > 0 && !deliveryInProgress && Sys.getDeviceSettings().phoneConnected) {
+        } else if (messageQueue.size() > 0 && !deliveryInProgress ) {
                 var message = messageQueue[0];
                 deliveryInProgress = true;
                 if (fakeTransmit == true) {
                 	log("FakeTransmit: " + message);
                 	new SleepListener(message).onComplete();
                 } else {
+                	//log("Actually Sending now");
 	                Comm.transmit(message, null, new SleepListener(message));
                 }
         }

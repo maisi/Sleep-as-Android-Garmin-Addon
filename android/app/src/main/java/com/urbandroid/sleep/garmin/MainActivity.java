@@ -19,7 +19,7 @@ import static com.garmin.android.connectiq.IQApp.IQAppStatus.INSTALLED;
 
 public class MainActivity extends Activity {
 
-    private boolean debug = false;
+    private boolean debug = true;
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private static final String PACKAGE_SLEEP = "com.urbandroid.sleep";
@@ -49,33 +49,33 @@ public class MainActivity extends Activity {
 
             registerDevice();
 
-            try {
-                mConnectIQ.getApplicationInfo(IQ_APP_ID, mDevice, new ConnectIQ.IQApplicationInfoListener() {
-                    @Override
-                    public void onApplicationInfoReceived( IQApp app ) {
-                        if (app != null) {
-                            if (app.getStatus() == INSTALLED) {
-                                watchappInstalled = true;
-    //                            if (app.getVersion() < MY_CURRENT_VERSION) {
-    //                                 Prompt the user to upgrade
-    //                            }
-                            } else if (app.getStatus() == IQApp.IQAppStatus.NOT_INSTALLED) {
-                            } else {
-                                Logger.logDebug(TAG + ": Error getting watch app: " + app.getStatus());
-                            }
-                        }
-                        Logger.logDebug(TAG + "Watchapp installed: " + watchappInstalled);
-                        findViewById(R.id.card_install_watchapp).setVisibility(!watchappInstalled ? View.VISIBLE : View.GONE);
-                    }
-                    @Override
-                    public void onApplicationNotInstalled( String applicationId ) {
-                    }
-                });
-            } catch (InvalidStateException e) {
-                Logger.logSevere(e);
-            } catch (ServiceUnavailableException e) {
-                Logger.logSevere(e);
-            }
+//            try {
+//                mConnectIQ.getApplicationInfo(IQ_APP_ID, mDevice, new ConnectIQ.IQApplicationInfoListener() {
+//                    @Override
+//                    public void onApplicationInfoReceived( IQApp app ) {
+//                        if (app != null) {
+//                            if (app.getStatus() == INSTALLED) {
+//                                watchappInstalled = true;
+//    //                            if (app.getVersion() < MY_CURRENT_VERSION) {
+//    //                                 Prompt the user to upgrade
+//    //                            }
+//                            } else if (app.getStatus() == IQApp.IQAppStatus.NOT_INSTALLED) {
+//                            } else {
+//                                Logger.logDebug(TAG + ": Error getting watch app: " + app.getStatus());
+//                            }
+//                        }
+//                        Logger.logDebug(TAG + "Watchapp installed: " + watchappInstalled);
+//                        findViewById(R.id.card_install_watchapp).setVisibility(!watchappInstalled ? View.VISIBLE : View.GONE);
+//                    }
+//                    @Override
+//                    public void onApplicationNotInstalled( String applicationId ) {
+//                    }
+//                });
+//            } catch (InvalidStateException e) {
+//                Logger.logSevere(e);
+//            } catch (ServiceUnavailableException e) {
+//                Logger.logSevere(e);
+//            }
 
         }
 
@@ -159,6 +159,7 @@ public class MainActivity extends Activity {
         }
 
         mConnectIQ = ConnectIQ.getInstance(this, ConnectIQ.IQConnectType.WIRELESS);
+        //mConnectIQ =  ConnectIQ.getInstance(this, ConnectIQ.IQConnectType.TETHERED);
         mConnectIQ.initialize(this, true, mListener);
 
         findViewById(R.id.install_gcm).setOnClickListener(new View.OnClickListener() {
