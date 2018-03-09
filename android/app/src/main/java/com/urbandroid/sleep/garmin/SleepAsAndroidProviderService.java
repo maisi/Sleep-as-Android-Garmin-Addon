@@ -99,7 +99,7 @@ public class SleepAsAndroidProviderService extends Service {
             Logger.logInfo(TAG + "onSdkReady");
 
             registerWatchMessagesReceiver();
-            checkAppIsAvailable();
+            //checkAppIsAvailable();
         }
 
         @Override
@@ -184,7 +184,7 @@ public class SleepAsAndroidProviderService extends Service {
                 public void onApplicationNotInstalled(String applicationId) {
                     Toast.makeText(getApplicationContext(), "Sleep not installed on watch", Toast.LENGTH_LONG).show();
                     Logger.logDebug("Sleep watch app not installed.");
-                    stopSelf();
+                    //stopSelf();
                 }
             });
         } catch (InvalidStateException e) {

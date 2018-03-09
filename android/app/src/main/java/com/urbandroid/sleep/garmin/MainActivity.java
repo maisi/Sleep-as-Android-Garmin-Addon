@@ -49,33 +49,33 @@ public class MainActivity extends Activity {
 
             registerDevice();
 
-//            try {
-//                mConnectIQ.getApplicationInfo(IQ_APP_ID, mDevice, new ConnectIQ.IQApplicationInfoListener() {
-//                    @Override
-//                    public void onApplicationInfoReceived( IQApp app ) {
-//                        if (app != null) {
-//                            if (app.getStatus() == INSTALLED) {
-//                                watchappInstalled = true;
-//    //                            if (app.getVersion() < MY_CURRENT_VERSION) {
-//    //                                 Prompt the user to upgrade
-//    //                            }
-//                            } else if (app.getStatus() == IQApp.IQAppStatus.NOT_INSTALLED) {
-//                            } else {
-//                                Logger.logDebug(TAG + ": Error getting watch app: " + app.getStatus());
-//                            }
-//                        }
-//                        Logger.logDebug(TAG + "Watchapp installed: " + watchappInstalled);
-//                        findViewById(R.id.card_install_watchapp).setVisibility(!watchappInstalled ? View.VISIBLE : View.GONE);
-//                    }
-//                    @Override
-//                    public void onApplicationNotInstalled( String applicationId ) {
-//                    }
-//                });
-//            } catch (InvalidStateException e) {
-//                Logger.logSevere(e);
-//            } catch (ServiceUnavailableException e) {
-//                Logger.logSevere(e);
-//            }
+            try {
+                mConnectIQ.getApplicationInfo(IQ_APP_ID, mDevice, new ConnectIQ.IQApplicationInfoListener() {
+                    @Override
+                    public void onApplicationInfoReceived( IQApp app ) {
+                        if (app != null) {
+                            if (app.getStatus() == INSTALLED) {
+                                watchappInstalled = true;
+    //                            if (app.getVersion() < MY_CURRENT_VERSION) {
+    //                                 Prompt the user to upgrade
+    //                            }
+                            } else if (app.getStatus() == IQApp.IQAppStatus.NOT_INSTALLED) {
+                            } else {
+                                Logger.logDebug(TAG + ": Error getting watch app: " + app.getStatus());
+                            }
+                        }
+                        Logger.logDebug(TAG + "Watchapp installed: " + watchappInstalled);
+                        findViewById(R.id.card_install_watchapp).setVisibility(!watchappInstalled ? View.VISIBLE : View.GONE);
+                    }
+                    @Override
+                    public void onApplicationNotInstalled( String applicationId ) {
+                    }
+                });
+            } catch (InvalidStateException e) {
+                Logger.logSevere(e);
+            } catch (ServiceUnavailableException e) {
+                Logger.logSevere(e);
+            }
 
         }
 
