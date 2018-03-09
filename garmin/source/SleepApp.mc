@@ -1,7 +1,6 @@
 using Toybox.Application as App;
 using Toybox.WatchUi as Ui;
 using Toybox.Sensor as Sensor;
-using Toybox.Timer as Timer;
 using Toybox.Time as Time;
 using Toybox.Communications as Comm;
 using Toybox.Attention as Attention;
@@ -103,7 +102,7 @@ class SleepApp extends App.AppBase {
 
     const SAMPLE_PERIOD = 100; //ms
     const AGG_PERIOD = 10000; //ms
-    const MAX_AGG_COUNT = AGG_PERIOD/SAMPLE_PERIOD;
+    var MAX_AGG_COUNT = 9;
 
     var phoneCommMethod;
 
@@ -134,6 +133,9 @@ class SleepApp extends App.AppBase {
     const shortPulse = [new Attention.VibeProfile(50, 200)];
 
     // Actigraphy
+    var mX = [0];
+    var mY = [0];
+    var mZ = [0];
     var last = false;
     var lastValues = new [3];
     var max_sum = 0;
@@ -160,20 +162,44 @@ class SleepApp extends App.AppBase {
         handleIncomingMessage(msg.data.toString());
     }
 
-    //! onStart() is called on application start up
+//    //! onStart() is called on application start up
+//    function onStart(state) {
+//        log("--onStart--");
+//        dataTimer = new Timer.Timer();
+//        dataTimer.start( method(:timerCallback), SAMPLE_PERIOD, true);
+//        sendStartingTracking();
+//        now = Sys.getClockTime();
+//        timecurrent = now.hour + ":" + now.min.format("%02d");
+//        // current_heartrate = (Sensor.getInfo()).heartRate;
+//        Ui.requestUpdate();
+//
+//        // Just for emulator
+//        if (fakeTransmit == true) { notice = notice + "fakeTransmit";}
+//    }
+
+    // Start pitch counter
     function onStart(state) {
-        log("--onStart--");
-        dataTimer = new Timer.Timer();
-        dataTimer.start( method(:timerCallback), SAMPLE_PERIOD, true);
         sendStartingTracking();
         now = Sys.getClockTime();
         timecurrent = now.hour + ":" + now.min.format("%02d");
-        // current_heartrate = (Sensor.getInfo()).heartRate;
         Ui.requestUpdate();
-
-        // Just for emulator
-        if (fakeTransmit == true) { notice = notice + "fakeTransmit";}
+        // initialize accelerometer
+        var options = {:period => 1, :sampleRate => 3, :enableAccelerometer => true};
+        try {
+            Sensor.registerSensorDataListener(method(:timerCallback), options);
+        }
+        catch(e) {
+            System.println(e.getErrorMessage());
+        }
     }
+
+    // Stop pitch counter
+    function onStop(state) {
+        Sensor.unregisterSensorDataListener();
+        phoneCommMethod = null;
+		log("onStop");
+    }
+
 
     function onHr(sensor_info) { // measurement á 5 s
         // log("onHr: " + sensor_info.heartRate.toString());
@@ -207,27 +233,28 @@ class SleepApp extends App.AppBase {
     }
 
     // Main timer loop - here we gather data from sensors, check for alarms and ring them, and send messages to phone
-    function timerCallback() {
+    function timerCallback(sensorData) {
+    	//log("timer callback");
+        mX = sensorData.accelerometerData.x;
+        mY = sensorData.accelerometerData.y;
+        mZ = sensorData.accelerometerData.z; 
+        
         now = Sys.getClockTime();
         timecurrent = now.hour + ":" + now.min.format("%02d");
-        if (now.sec == 0) {
+        if (timerCount % 60 == 0) {
             Ui.requestUpdate();
         }
-
-        info = Sensor.getInfo();
-
-        timerCount++;
 
         if (stopAppDelay < 5) {
             stopAppDelay++;
         }
-        if (timerCount % 10 == 0) {
-            // log("timerCallback");
-            gatherHR(info);
-            timerCount = 0;
-        }
+//        if (timerCount % 10 == 0) {
+//            // log("timerCallback");
+//            gatherHR(info);
+//            timerCount = 0;
+//        }
 
-        gatherData(info);
+        gatherData();
 
         if (alarm_currently_active) {
             alarmCount++;
@@ -250,6 +277,8 @@ class SleepApp extends App.AppBase {
         } else {
             checkIfAlarmScheduledForNow();
         }
+        
+        timerCount++;
         sendNextMessage();
     }
 
@@ -330,10 +359,10 @@ class SleepApp extends App.AppBase {
         return mail.substring((mail.find(";"))+1,mail.length());
     }
 
-    function gatherData(info) {
-        if ( info has :accel && info.accel != null ) {
-            store_max(info.accel); // saves to both max_sum and max_sum_new
-
+    function gatherData() {
+            store_max(); // saves to both max_sum and max_sum_new
+	
+			//log("left store_max max_sum:"+max_sum+" "+max_sum_new);
             if ( aggCount >= MAX_AGG_COUNT ) {
                 batch.add(max_sum);
                 batch_new.add(max_sum_new);
@@ -344,9 +373,9 @@ class SleepApp extends App.AppBase {
             if ( batch.size() >= batchSize ) {
                 sendCurrentDataAndResetBatch();
             }
-
             aggCount++;
-        }
+            //log("current batchsize:"+batch.size()+" limit:"+batchSize);
+            //log("current agg counter:"+aggCount);
 
     }
 
@@ -386,7 +415,7 @@ class SleepApp extends App.AppBase {
 
     // Batch can be any number but usually we set it either to 1 when the phone user is currently viewing the phone so he has data from watch sent to phone immediately for viewing, or to 12 when the phone is idle, to conserve battery (we don't have to send via bluetooth as often)
     function setBatchSize(newBatchSize) {
-        log("Batch set to " + newBatchSize.toString());
+        //log("Batch set to " + newBatchSize.toString());
         batchSize = newBatchSize;
         sendCurrentDataAndResetBatch();
     }
@@ -474,12 +503,16 @@ class SleepApp extends App.AppBase {
         }
     }
 
-    function store_max(currentValues) {
-
+    function store_max() {
+		//log("store_max called");
+		var size = mX.size();
+		//log("size: "+size);
+		for ( var i = 0; i < size; i += 1) {
+		log("for loop i:"+i);
         if (last) {
         	//log("x" + currentValues[0] + "y" + currentValues[1] + "z" + currentValues[2]);
-            var sum = ((lastValues[0] - currentValues[0]).abs() + (lastValues[1] - currentValues[1]).abs() + (lastValues[2] - currentValues[2]).abs());
-            var sum_new = Math.floor(Math.sqrt((currentValues[0] * currentValues[0]) + (currentValues[1] * currentValues[1]) + (currentValues[2] * currentValues[2]))).toNumber();
+            var sum = ((lastValues[0] - mX[i]).abs() + (lastValues[1] - mY[i]).abs() + (lastValues[2] - mZ[i]).abs());
+            var sum_new = Math.floor(Math.sqrt((mX[i] * mX[i]) + (mY[i] * mY[i]) + (mZ[i] * mZ[i]))).toNumber();
 
             if (sum > max_sum) {
                 max_sum = sum;
@@ -491,19 +524,20 @@ class SleepApp extends App.AppBase {
         }
 
         last = true;
-        lastValues[0] = currentValues[0];
-        lastValues[1] = currentValues[1];
-        lastValues[2] = currentValues[2];
+        lastValues[0] = mX[0];
+        lastValues[1] = mY[0];
+        lastValues[2] = mZ[0];
+        }
     }
 
-    //! onStop() is called when your application is exiting
-    function onStop(state) {
-    	phoneCommMethod = null;
-		log("onStop");
-        // messageQueue = null;
-        betalog("usedMem" + Sys.getSystemStats().usedMemory + "freeMem" + Sys.getSystemStats().freeMemory + "totalMem" + Sys.getSystemStats().totalMemory);
-		// messageQueue = null;
-    }
+//    //! onStop() is called when your application is exiting
+//    function onStop(state) {
+//    	phoneCommMethod = null;
+//		log("onStop");
+//        // messageQueue = null;
+//        betalog("usedMem" + Sys.getSystemStats().usedMemory + "freeMem" + Sys.getSystemStats().freeMemory + "totalMem" + Sys.getSystemStats().totalMemory);
+//		// messageQueue = null;
+//    }
 
     //! Return the initial view of your application here
     function getInitialView() {
