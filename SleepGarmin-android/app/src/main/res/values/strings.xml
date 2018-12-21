@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Sleep Garmin</string>
+    <string name="app_name_long">Sleep as Android Garmin Addon</string>
+    <string name="whitelist_GCM_text">Make sure to whitelist Garmin Connect Mobile from any battery optimization.</string>
+    <string name="read_more">Read more</string>
+    <string name="install_saa">Please install Sleep as Android</string>
+    <string name="install_gcm">Please install Garmin Connect Mobile</string>
+    <string name="install_watchapp">Please install Sleep on your Garmin watch</string>
+    <string name="install">Install</string>
+    <string name="setup_text">Setup Garmin with Sleep as Android</string>
+    <string name="setup">Setup</string>
+    <string name="stop">Stop</string>
+    <string name="install_watchsleepstarter">Please install Watch/Phaser Starter for Sleep as Android to start tracking from the watch.</string>
+    <string name="log">LOG appears below</string>
+    <string name="running">Sleep tracking with Garmin. Tap to stop.</string>
+</resources>
