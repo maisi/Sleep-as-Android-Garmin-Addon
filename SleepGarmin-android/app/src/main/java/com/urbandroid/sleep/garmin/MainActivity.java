@@ -167,7 +167,24 @@ public class MainActivity extends Activity {
         if (GlobalInitializer.debug){
             mConnectIQ = ConnectIQ.getInstance(this, ConnectIQ.IQConnectType.TETHERED);
             Logger.logDebug("ConnectIQ instance set to TETHERED");
-            mConnectIQ.initialize(this, true, mListener);
+            mConnectIQ.initialize(this, true, new ConnectIQ.ConnectIQListener() {
+                @Override
+                public void onSdkReady() {
+
+                }
+
+                @Override
+                public void onInitializeError(ConnectIQ.IQSdkErrorStatus iqSdkErrorStatus) {
+
+                }
+
+                @Override
+                public void onSdkShutDown() {
+
+                }
+
+            }
+            );
         } else {
             mConnectIQ = ConnectIQ.getInstance(this, ConnectIQ.IQConnectType.WIRELESS);
             mConnectIQ.initialize(this, false, new ConnectIQ.ConnectIQListener() {

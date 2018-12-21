@@ -253,6 +253,7 @@ public class SleepAsAndroidProviderService extends Service {
                         String receivedMsgType = msgArray[0];
 
                         if (receivedMsgType.equals("DATA")) {
+                            Logger.logDebug("new Data");
                             String[] values = Arrays.copyOfRange(msgArray, 1, msgArray.length);
                             maxFloatValues = new float[values.length];
                             for (int i = 0; i < values.length; i++) {
@@ -265,6 +266,7 @@ public class SleepAsAndroidProviderService extends Service {
                                 }
                             }
                         } else if (receivedMsgType.equals("DATA_NEW")) {
+                            Logger.logDebug("new Data");
                             String[] values = Arrays.copyOfRange(msgArray, 1, msgArray.length);
                             maxRawFloatValues = new float[values.length];
                             for (int i = 0; i < values.length; i++) {
@@ -278,27 +280,34 @@ public class SleepAsAndroidProviderService extends Service {
                                 }
                             }
                         } else if (receivedMsgType.equals("SNOOZE")) {
+                            Logger.logDebug("SNOOZE Intent");
                             Intent snoozeIntent = new Intent(SNOOZE_ACTION_NAME);
                             sendExplicitBroadcastToSleep(snoozeIntent);
                         } else if (receivedMsgType.equals("DISMISS")) {
+                            Logger.logDebug("DISMISS Intent");
                             Intent dismissIntent = new Intent(DISMISS_ACTION_NAME);
                             sendExplicitBroadcastToSleep(dismissIntent);
                         } else if (receivedMsgType.equals("PAUSE")) {
+                            Logger.logDebug("PAUSE Intent");
                             Intent pauseIntent = new Intent(PAUSE_ACTION_NAME);
                             sendExplicitBroadcastToSleep(pauseIntent);
                         } else if (receivedMsgType.equals("RESUME")) {
+                            Logger.logDebug("RESUME Intent");
                             Intent resumeIntent = new Intent(RESUME_ACTION_NAME);
                             sendExplicitBroadcastToSleep(resumeIntent);
                         } else if (receivedMsgType.equals("STARTING")) {
+                            Logger.logDebug("STARTING Intent");
                             Intent startIntent = new Intent(STARTED_ON_WATCH_NAME);
                             sendExplicitBroadcastToSleep(startIntent);
                         } else if (receivedMsgType.equals("HR")) {
+                            Logger.logDebug("HR Intent");
                             float[] hrData = new float[] {Float.valueOf(msgArray[1])};
                             Logger.logInfo(TAG + ": received HR data from watch " + hrData[0]);
                             Intent hrDataIntent = new Intent(NEW_HR_DATA_ACTION_NAME);
                             hrDataIntent.putExtra("DATA", hrData);
                             sendExplicitBroadcastToSleep(hrDataIntent);
                         } else if (receivedMsgType.equals("STOPPING")) {
+                            Logger.logDebug("STOPPING Intent");
                             Intent stopIntent = new Intent(STOP_SLEEP_TRACK_ACTION);
                             sendExplicitBroadcastToSleep(stopIntent);
                             stopSelfAndDontScheduleRecovery(context);

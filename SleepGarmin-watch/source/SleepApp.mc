@@ -11,7 +11,7 @@ using Toybox.Math as Math;
 
 // Globals
 
-    var debug = true; var fakeTransmit = false; var beta = false; var debugAlarm = false;
+    var debug = true; var fakeTransmit = false; var beta = true; var debugAlarm = false;
     var notice = "";
 
     var dataTimer;
@@ -44,6 +44,7 @@ using Toybox.Math as Math;
     
 
     function exitTimer(afterCycles) {
+    	log("exitTimer: "+afterCycles);
 		targetExitTime = afterCycles;
     	shouldExit = true;
     }
@@ -81,7 +82,7 @@ using Toybox.Math as Math;
 
         if (messageQueue.indexOf(message) == -1) {
             messageQueue.add(message);
-            // log("Adding to q:" + message + " outQ: " + messageQueue);
+            log("Adding to q:" + message + " outQ: " + messageQueue);
         }
     }
 
@@ -123,11 +124,12 @@ using Toybox.Math as Math;
     	stoppingBool = true;
     	if (Sys.getDeviceSettings().phoneConnected && !fakeTransmit) {
                 Comm.transmit("STOPPING", null, new SleepNowListener("STOPPING"));
+                exitTimer(2);
 		} else if (!Sys.getDeviceSettings().phoneConnected) {
-				exitTimer(20);
+				exitTimer(3);
 		} else if ( lastMessageReceived == 0 || ((lastMessageReceived - Time.now().value()) > 30000)) {
 				log("Possible failure_during_transfer");
-				exitTimer(20);
+				exitTimer(3);
 		}
     }
 
@@ -137,7 +139,7 @@ using Toybox.Math as Math;
 		if (Sys.getDeviceSettings().phoneConnected && !fakeTransmit) {
         	Comm.transmit("STOPPING", null, new SleepNowListener("STOPPING"));
 		}
-		exitTimer(20);
+		exitTimer(2);
     }
 
 
@@ -147,8 +149,9 @@ class SleepApp extends App.AppBase {
 
     const SAMPLE_PERIOD = 100; //ms
     const AGG_PERIOD = 10000; //ms
-    const MAX_AGG_COUNT = AGG_PERIOD/SAMPLE_PERIOD;
-
+    //const MAX_AGG_COUNT = AGG_PERIOD/SAMPLE_PERIOD;
+	var MAX_AGG_COUNT = 9;
+	
     var info;
     var hrInfo;
     var listener;
@@ -169,14 +172,18 @@ class SleepApp extends App.AppBase {
     var stopAppDelay = 0;
 
     // Alarms
-    var alarm_gap_duration = 300; // Time between alarm pulses
+    var alarm_gap_duration = 2; // Time between alarm pulses
     var alarm_gap_duration_current = alarm_gap_duration;
     var alarmCount = alarm_gap_duration;
     // Vibration patterns
     var vibrateOnAlarm = true;
-    const shortPulse = [new Attention.VibeProfile(50, 200)];
+    const shortPulse = [new Attention.VibeProfile(75, 400)];
 
     // Actigraphy
+    var mX = [0];
+    var mY = [0];
+    var mZ = [0];
+    
     var last = false;
     var lastValues = new [3];
     var max_sum = 0;
@@ -211,8 +218,8 @@ class SleepApp extends App.AppBase {
     //! onStart() is called on application start up
     function onStart(state) {
         log("--onStart--");
-        dataTimer = new Timer.Timer();
-		dataTimer.start( method(:timerCallback), SAMPLE_PERIOD, true);
+        //dataTimer = new Timer.Timer();
+		//dataTimer.start( method(:timerCallback), SAMPLE_PERIOD, true);
 
         sendStartingTracking();
         now = Sys.getClockTime();
@@ -220,44 +227,61 @@ class SleepApp extends App.AppBase {
         // current_heartrate = (Sensor.getInfo()).heartRate;
         Ui.requestUpdate();
 
+		 // initialize accelerometer
+        var options = {:period => 1, :sampleRate => 10, :enableAccelerometer => true};
+        try {
+            Sensor.registerSensorDataListener(method(:timerCallback), options);
+        }
+        catch(e) {
+            System.println(e.getErrorMessage());
+        }
+
         // Just for emulator
         if (fakeTransmit == true) { notice = notice + "fakeTransmit";}
 
     }
 
     // Main timer loop - here we gather data from sensors, check for alarms and ring them, and send messages to phone
-    function timerCallback() {
+    function timerCallback(sensorData) {
     	//log("TimerCallback");
         now = Sys.getClockTime();
+        
+        mX = sensorData.accelerometerData.x;
+        mY = sensorData.accelerometerData.y;
+        mZ = sensorData.accelerometerData.z; 
+        
         timecurrent = now.hour + ":" + now.min.format("%02d");
         if (now.sec == 0) {
             Ui.requestUpdate();
         }
 
         if (shouldExit) {
+        	log("shouldExit: "+targetExitTime);
         	if (targetExitTime == 0) {
+        		log("Exit now!");
        		 	Sys.exit();
     		}
-        	targetExitTime = targetExitTime - 1;
+        	targetExitTime --;
     	}
 
         info = Sensor.getInfo();
 
         timerCount++;
 
-        if (stopAppDelay < 5) {
+        if (stopAppDelay < 3) {
             stopAppDelay++;
         }
-        if (timerCount % 10 == 0) {
+        if (timerCount % 3 == 0) {
             // log("timerCallback");
             gatherHR(info);
             timerCount = 0;
         }
 
-        gatherData(info);
-
+        //gatherData(info);
+		gatherData();
         if (alarm_currently_active) {
             alarmCount++;
+            log("Alarmcount:"+ alarmCount+" alarm_gap_d: "+alarm_gap_duration+"a_g_d_c: "+alarm_gap_duration_current);
             if (delay <= 0) {
                 if (alarmViewActive != true) {
                     Ui.switchToView(new SleepAlarmView(), new SleepAlarmDelegate(), Ui.SLIDE_IMMEDIATE);
@@ -265,8 +289,8 @@ class SleepApp extends App.AppBase {
                 if (alarmCount >= alarm_gap_duration_current) {
                     ringAlarm();
                     alarm_gap_duration = Math.floor(alarm_gap_duration/2);
-                    if (alarm_gap_duration < 10) {
-                        alarm_gap_duration = 10;
+                    if (alarm_gap_duration < 4) {
+                        alarm_gap_duration = 2;
                     }
                     alarm_gap_duration_current = alarm_gap_duration;
                     alarmCount = 0;
@@ -296,7 +320,7 @@ class SleepApp extends App.AppBase {
             batch = [];
             batch_new = [];
         }
-        // log("transmitting: " + batch.toString());
+         log("transmitting: " + batch.toString());
     }
     function sendHRData(hrAvg) {
         var HRtoSend = ["HR", hrAvg];
@@ -309,9 +333,9 @@ class SleepApp extends App.AppBase {
         log("In: " + mail);
         lastMessageReceived = Time.now().value();
 
-        if ( mail.equals("StopApp") && stopAppDelay == 5) {
+        if ( mail.equals("StopApp") && stopAppDelay == 3) {
         	stopAlarm();
-			exitTimer(22);
+			exitTimer(2);
         } else if ( mail.equals("Check") ) {
             sendConfirmConnection();
         } else if ( mail.find("Pause;") == 0 ) {
@@ -363,10 +387,31 @@ class SleepApp extends App.AppBase {
         return mail.substring((mail.find(";"))+1,mail.length());
     }
 
-    function gatherData(info) {
-        if ( info has :accel && info.accel != null ) {
-            store_max(info.accel); // saves to both max_sum and max_sum_new
+    //function gatherData(info) {
+    //    if ( info has :accel && info.accel != null ) {
+    //        store_max(info.accel); // saves to both max_sum and max_sum_new
 
+    //        if ( aggCount >= MAX_AGG_COUNT ) {
+    //            batch.add(max_sum);
+    //            batch_new.add(max_sum_new);
+    //            max_sum_new = 0;
+    //            max_sum = 0;
+    //            aggCount = 0;
+    //        }
+
+    //        if ( batch.size() >= batchSize ) {
+    //            sendCurrentDataAndResetBatch();
+    //        }
+
+    //        aggCount++;
+    //    }
+
+    //}
+    
+    function gatherData() {
+            store_max(); // saves to both max_sum and max_sum_new
+	
+			//log("left store_max max_sum:"+max_sum+" "+max_sum_new);
             if ( aggCount >= MAX_AGG_COUNT ) {
                 batch.add(max_sum);
                 batch_new.add(max_sum_new);
@@ -374,31 +419,30 @@ class SleepApp extends App.AppBase {
                 max_sum = 0;
                 aggCount = 0;
             }
-
             if ( batch.size() >= batchSize ) {
                 sendCurrentDataAndResetBatch();
             }
-
             aggCount++;
-        }
+            //log("current batchsize:"+batch.size()+" limit:"+batchSize);
+            //log("current agg counter:"+aggCount);
 
     }
 
     function gatherHR(hrInfo) {
         if (hrTracking == true) {
-        // log("has nonnull heartrate: " + hrInfo.heartRate);
+         log("has nonnull heartrate: " + hrInfo.heartRate);
             if ( hrInfo has :heartRate && hrInfo.heartRate != null ) {
 
                 hrCount = hrCount + 1;
                 // log(hrCount);
 
                 if (hrCurrentlyReading == true) {
-                    // log("hrinfo, heartrate" + hrInfo + " " +hrInfo.heartRate);
+                    log("hrinfo, heartrate" + hrInfo + " " +hrInfo.heartRate);
     	            hrValue = hrValue + hrInfo.heartRate;
                 }
 
                 if ( (hrCount >= HR_ON_COUNT) && (hrCurrentlyReading == true) ) {
- 					// log("hrinfo, heartrate" + hrInfo + " " +hrInfo.heartRate);
+ 				    log("hrinfo, heartrate" + hrInfo + " " +hrInfo.heartRate);
     	            // log("switching off HR read");
                     hrCurrentlyReading = false;
                     // Sensor.setEnabledSensors([]); // disables heart rate sensor
@@ -435,8 +479,8 @@ class SleepApp extends App.AppBase {
 
     function startAlarm() {
         alarm_currently_active = true;
-        alarm_gap_duration = 300;
-        alarm_gap_duration_current = 300;
+        alarm_gap_duration = 2;
+        alarm_gap_duration_current = 2;
         alarmCount = alarm_gap_duration;
     }
 
@@ -477,13 +521,16 @@ class SleepApp extends App.AppBase {
 
 
     function sendNextMessage() {
+    //log("SendNextMessage");
+    //log("Size:"+ messageQueue.size() + deliveryInProgress + Sys.getDeviceSettings().phoneConnected);
         if (deliveryErrorCount > MAX_DELIVERY_ERROR) {
+            log("Too many errors");
             deliveryPauseCount++;
             if (deliveryPauseCount > MAX_DELIVERY_PAUSE) {
                 deliveryPauseCount = 0;
                 deliveryErrorCount = 0;
             }
-        } else if (messageQueue.size() > 0 && !deliveryInProgress && Sys.getDeviceSettings().phoneConnected) {
+        } else if (messageQueue.size() > 0 && !deliveryInProgress) {
                 var message = messageQueue[0];
                 deliveryInProgress = true;
                 if (fakeTransmit == true) {
@@ -496,32 +543,39 @@ class SleepApp extends App.AppBase {
         }
     }
 
-    function store_max(currentValues) {
+    function store_max() {
 
-        if (last) {
-        	//log("x" + currentValues[0] + "y" + currentValues[1] + "z" + currentValues[2]);
-            var sum = ((lastValues[0] - currentValues[0]).abs() + (lastValues[1] - currentValues[1]).abs() + (lastValues[2] - currentValues[2]).abs());
-            var sum_new = Math.floor(Math.sqrt((currentValues[0] * currentValues[0]) + (currentValues[1] * currentValues[1]) + (currentValues[2] * currentValues[2]))).toNumber();
+	   //log("store_max called");
+		var size = mX.size();
+		//log("size: "+size);
+		for ( var i = 0; i < size; i += 1) {
+			//log("for loop i:"+i);
+        	if (last) {
+        		//log("x" + currentValues[0] + "y" + currentValues[1] + "z" + currentValues[2]);
+            	var sum = ((lastValues[0] - mX[i]).abs() + (lastValues[1] - mY[i]).abs() + (lastValues[2] - mZ[i]).abs());
+            	var sum_new = Math.floor(Math.sqrt((mX[i] * mX[i]) + (mY[i] * mY[i]) + (mZ[i] * mZ[i]))).toNumber();
 
-            if (sum > max_sum) {
-                max_sum = sum;
-            }
-            if (sum_new > max_sum_new) {
-                max_sum_new = sum_new;
-            }
+ 	            if (sum > max_sum) {
+     	           max_sum = sum;
+        	    }
+            	if (sum_new > max_sum_new) {
+                   max_sum_new = sum_new;
+            	}
 
-        }
+        	}
 
-        last = true;
-        lastValues[0] = currentValues[0];
-        lastValues[1] = currentValues[1];
-        lastValues[2] = currentValues[2];
+        	last = true;
+        	lastValues[0] = mX[0];
+        	lastValues[1] = mY[0];
+        	lastValues[2] = mZ[0];
+         }
     }
 
     //! onStop() is called when your application is exiting
     function onStop(state) {
+    	Sensor.unregisterSensorDataListener();
 		log("onStop");
-        dataTimer.stop();
+        // dataTimer.stop();
         // messageQueue = null;
         betalog("usedMem" + Sys.getSystemStats().usedMemory + "freeMem" + Sys.getSystemStats().freeMemory + "totalMem" + Sys.getSystemStats().totalMemory);
 		// messageQueue = null;
